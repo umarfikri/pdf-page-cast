@@ -64,7 +64,7 @@ export function DocumentDropzone({
         type="file"
         className="hidden"
         onChange={handleFileChange}
-        accept=".pdf,.doc,.docx,.txt,.csv,.xlsx"
+        accept=".pdf,application/pdf"
       />
 
       {!file ? (
@@ -87,10 +87,10 @@ export function DocumentDropzone({
           </div>
           <div>
             <p className="font-semibold text-slate-700">
-              Click to upload or drag & drop
+              Click to upload or drag & drop PDF
             </p>
             <p className="text-xs text-sky-600/80 font-medium mt-1">
-              PDF, DOC, DOCX, TXT, or CSV
+              PDF documents only
             </p>
           </div>
         </div>
@@ -137,7 +137,7 @@ export function DocumentDropzone({
               onClick={onUpload}
               className="px-4 py-1.5 text-xs font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-lg transition-colors shadow-sm cursor-pointer"
             >
-              Upload & Validate
+              Upload & Scan
             </button>
           </div>
         </div>

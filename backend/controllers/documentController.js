@@ -1,16 +1,23 @@
-import { detectDocumentType } from "../services/documentService.js";
+import { isPdfFile, parsePdfWysiwyg } from "../services/documentService.js";
 
 // In-memory store for validation jobs
 const jobs = new Map();
 
 // POST /api/upload
-export const uploadDocument = (req, res) => {
+export const uploadDocument = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
+  // Strict PDF validation
+  if (!isPdfFile(req.file)) {
+    return res.status(400).json({
+      error: "Uploaded file is not a PDF. Only PDF documents are supported.",
+    });
+  }
+
   const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  const detected = detectDocumentType(req.file);
+  const fileBuffer = req.file.buffer;
 
   jobs.set(jobId, {
     status: "processing",
@@ -18,28 +25,28 @@ export const uploadDocument = (req, res) => {
     size: req.file.size,
     uploadedAt: new Date().toISOString(),
     result: null,
+    error: null,
   });
 
-  // Simulate background validation process (takes ~3 seconds)
-  setTimeout(() => {
+  // Asynchronous background scanning of PDF WYSIWYG data
+  setTimeout(async () => {
     const job = jobs.get(jobId);
-    if (job) {
+    if (!job) return;
+
+    try {
+      const wysiwygData = await parsePdfWysiwyg(fileBuffer);
       job.status = "completed";
-      job.result = {
-        documentType: detected.type,
-        category: detected.category,
-        format: detected.format,
-        description: detected.description,
-        isValid: true,
-        validatedAt: new Date().toISOString(),
-      };
+      job.result = wysiwygData;
+    } catch (err) {
+      job.status = "failed";
+      job.error = err.message || "Failed to scan PDF document";
     }
-  }, 3000);
+  }, 1500);
 
   res.json({
     jobId,
     status: "processing",
-    message: "Document received. Validation in progress.",
+    message: "PDF received. Scanning document data in progress.",
   });
 };
 

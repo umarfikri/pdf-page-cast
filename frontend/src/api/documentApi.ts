@@ -31,3 +31,13 @@ export async function checkValidationStatus(
 
   return response.json();
 }
+
+export async function getHello(): Promise<{ message: string }> {
+  const response = await fetch("/api/hello");
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch hello message");
+  }
+
+  return response.json();
+}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { ValidationResult, UploadStatus } from "../types/document";
+import type { PdfWysiwygResult, UploadStatus } from "../types/document";
 import { uploadDocument, checkValidationStatus } from "../api/documentApi";
 
 export function useDocumentUpload() {
@@ -7,7 +7,7 @@ export function useDocumentUpload() {
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [jobId, setJobId] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
-    useState<ValidationResult | null>(null);
+    useState<PdfWysiwygResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pollIntervalRef = useRef<number | null>(null);
@@ -22,6 +22,18 @@ export function useDocumentUpload() {
   }, []);
 
   const handleFileSelect = (selectedFile: File) => {
+    // Client-side quick check
+    const isPdf =
+      selectedFile.type === "application/pdf" ||
+      selectedFile.name.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      setFile(null);
+      setStatus("error");
+      setErrorMessage("Selected file is not a PDF. Only PDF documents are supported.");
+      return;
+    }
+
     setFile(selectedFile);
     setStatus("idle");
     setValidationResult(null);
@@ -57,7 +69,7 @@ export function useDocumentUpload() {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
-          setErrorMessage(data.error || "Validation failed");
+          setErrorMessage(data.error || "Failed to scan PDF document");
           setStatus("error");
         }
       } catch (err: any) {
@@ -65,7 +77,7 @@ export function useDocumentUpload() {
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
         }
-        setErrorMessage(err.message || "Error during status polling");
+        setErrorMessage(err.message || "Error during scanning status polling");
         setStatus("error");
       }
     }, 1000);
@@ -84,7 +96,7 @@ export function useDocumentUpload() {
       startPolling(data.jobId);
     } catch (err: any) {
       setErrorMessage(
-        err.message || "Could not connect to backend server"
+        err.message || "Failed to upload document"
       );
       setStatus("error");
     }

@@ -1,10 +1,29 @@
-export interface ValidationResult {
-  documentType: string;
-  category: string;
-  format: string;
-  description: string;
-  isValid: boolean;
-  validatedAt: string;
+export interface PdfTextItem {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontName: string | null;
+  hasEOL: boolean;
+}
+
+export interface PdfPageData {
+  pageNumber: number;
+  width: number;
+  height: number;
+  text: string;
+  itemsCount: number;
+  items: PdfTextItem[];
+}
+
+export interface PdfWysiwygResult {
+  isPdf: boolean;
+  totalPages: number;
+  fullText: string;
+  pages: PdfPageData[];
+  metadata: Record<string, any> | null;
+  scannedAt: string;
 }
 
 export type UploadStatus =
@@ -21,10 +40,8 @@ export interface UploadResponse {
 }
 
 export interface ValidationStatusResponse {
+  jobId: string;
   status: "processing" | "completed" | "failed";
-  filename?: string;
-  size?: number;
-  uploadedAt?: string;
-  result?: ValidationResult;
+  result?: PdfWysiwygResult;
   error?: string;
 }
