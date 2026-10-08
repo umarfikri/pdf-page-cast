@@ -1,6 +1,22 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const { PDFParse } = require("pdf-parse");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execPromise = promisify(exec);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export const UPLOAD_DIR = path.join(__dirname, "../uploads");
+export const BACKEND_DIR = path.join(__dirname, "..");
+export const SOMETHING_HTML_PATH = path.join(BACKEND_DIR, "something.html");
+
+// Ensure upload directory exists
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 // Check if the uploaded file is a valid PDF
 export function isPdfFile(file) {
@@ -21,54 +37,76 @@ export function isPdfFile(file) {
   return false;
 }
 
-// Extract WYSIWYG data (pages, text elements, positions, dimensions) from PDF buffer
-export async function parsePdfWysiwyg(buffer) {
-  const parser = new PDFParse({ data: buffer });
+export const DOCKER_IMAGE =
+  process.env.PDF2HTMLEX_DOCKER_IMAGE ||
+  "pdf2htmlex/pdf2htmlex:0.18.8.rc2-master-20200820-alpine-3.12.0-x86_64";
+
+/**
+ * Check pdf2htmlEX Docker status
+ */
+export async function checkPdf2htmlStatus() {
   try {
-    const doc = await parser.load();
-    const numPages = doc.numPages;
-    const pages = [];
-    let fullText = "";
-
-    for (let i = 1; i <= numPages; i++) {
-      const page = await doc.getPage(i);
-      const viewport = page.getViewport({ scale: 1.0 });
-      const textContent = await page.getTextContent();
-
-      const items = textContent.items.map((item) => ({
-        text: item.str,
-        x: item.transform ? Math.round(item.transform[4] * 100) / 100 : 0,
-        y: item.transform ? Math.round(item.transform[5] * 100) / 100 : 0,
-        width: Math.round((item.width || 0) * 100) / 100,
-        height: Math.round((item.height || 0) * 100) / 100,
-        fontName: item.fontName || null,
-        hasEOL: item.hasEOL || false,
-      }));
-
-      const pageText = items.map((it) => it.text).join(" ");
-      fullText += (fullText ? "\n\n" : "") + pageText;
-
-      pages.push({
-        pageNumber: i,
-        width: viewport.width,
-        height: viewport.height,
-        text: pageText,
-        itemsCount: items.length,
-        items: items,
-      });
-    }
-
-    const info = await parser.getInfo();
-
+    const { stdout: dockerVer } = await execPromise("docker -v");
     return {
-      isPdf: true,
-      totalPages: numPages,
-      fullText: fullText,
-      pages: pages,
-      metadata: info?.info || null,
-      scannedAt: new Date().toISOString(),
+      installed: true,
+      mode: "docker",
+      dockerVersion: dockerVer.trim(),
+      image: DOCKER_IMAGE,
+      message: `Docker is detected with image: ${DOCKER_IMAGE}`,
     };
-  } finally {
-    await parser.destroy();
+  } catch (err) {
+    return {
+      installed: false,
+      mode: "docker",
+      error: err.message,
+      help: "Ensure Docker Desktop is running on your machine.",
+    };
   }
+}
+
+/**
+ * Convert PDF buffer to pixel-perfect HTML using pdf2htmlEX in Docker and save to something.html
+ * @param {Buffer} buffer - PDF file buffer
+ * @param {string} originalname - Original filename
+ * @returns {Promise<Object>}
+ */
+export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
+  const tempFileName = `input_${Date.now()}.pdf`;
+  const inputPdfPath = path.join(UPLOAD_DIR, tempFileName);
+  const outputFilename = "something.html";
+  const finalHtmlPath = path.join(BACKEND_DIR, outputFilename);
+
+  console.log(`[pdf2htmlEX] Writing temporary PDF: ${inputPdfPath}`);
+  await fs.promises.writeFile(inputPdfPath, buffer);
+
+  // Normalize path for docker volume mount on Windows
+  const hostMountPath = path.resolve(BACKEND_DIR);
+
+  // The Docker image entrypoint is already pdf2htmlEX, so pass options directly
+  const dockerCmd = `docker run --rm -v "${hostMountPath}:/pdf" -w /pdf ${DOCKER_IMAGE} --embed-css 1 --embed-font 1 --embed-image 1 --embed-javascript 1 --dest-dir /pdf "uploads/${tempFileName}" "${outputFilename}"`;
+
+  console.log(`[pdf2htmlEX] Running Docker command: ${dockerCmd}`);
+
+  try {
+    const { stdout, stderr } = await execPromise(dockerCmd);
+    if (stdout) console.log(`[pdf2htmlEX stdout]:`, stdout);
+    if (stderr) console.log(`[pdf2htmlEX stderr]:`, stderr);
+    console.log(`[pdf2htmlEX] Successfully generated pixel-perfect HTML at ${finalHtmlPath}`);
+  } catch (err) {
+    console.error(`[pdf2htmlEX Error]:`, err.message);
+    if (!fs.existsSync(finalHtmlPath)) {
+      throw new Error(`pdf2htmlEX Docker conversion failed: ${err.message}`);
+    }
+  } finally {
+    // Clean up temporary input file
+    fs.promises.unlink(inputPdfPath).catch(() => {});
+  }
+
+  return {
+    success: true,
+    htmlPath: finalHtmlPath,
+    viewUrl: "/something",
+    filename: originalname,
+    convertedAt: new Date().toISOString(),
+  };
 }

@@ -102,11 +102,10 @@ function App() {
                     key={p.pageNumber}
                     type="button"
                     onClick={() => setActivePageIndex(idx)}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${
-                      activePageIndex === idx
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${activePageIndex === idx
                         ? "bg-sky-500 text-white shadow-xs"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                      }`}
                   >
                     Page {p.pageNumber}
                   </button>
