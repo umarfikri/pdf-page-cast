@@ -83,7 +83,8 @@ export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
   const hostMountPath = path.resolve(BACKEND_DIR);
 
   // The Docker image entrypoint is already pdf2htmlEX, so pass options directly
-  const dockerCmd = `docker run --rm -v "${hostMountPath}:/pdf" -w /pdf ${DOCKER_IMAGE} --embed-css 1 --embed-font 1 --embed-image 1 --embed-javascript 1 --dest-dir /pdf "uploads/${tempFileName}" "${outputFilename}"`;
+  // --process-outline 0 --embed-outline 0 disables the sidebar navigation/bookmarks pane
+  const dockerCmd = `docker run --rm -v "${hostMountPath}:/pdf" -w /pdf ${DOCKER_IMAGE} --embed-css 1 --embed-font 1 --embed-image 1 --embed-javascript 1 --process-outline 0 --embed-outline 0 --dest-dir /pdf "uploads/${tempFileName}" "${outputFilename}"`;
 
   console.log(`[pdf2htmlEX] Running Docker command: ${dockerCmd}`);
 
@@ -91,6 +92,25 @@ export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
     const { stdout, stderr } = await execPromise(dockerCmd);
     if (stdout) console.log(`[pdf2htmlEX stdout]:`, stdout);
     if (stderr) console.log(`[pdf2htmlEX stderr]:`, stderr);
+
+    if (fs.existsSync(finalHtmlPath)) {
+      let htmlContent = await fs.promises.readFile(finalHtmlPath, "utf8");
+
+      // Hide sidebar navigation via CSS and ensure all page content (.pc) displays immediately
+      const noSidebarCss = `<style type="text/css">
+#sidebar { display: none !important; width: 0 !important; }
+#sidebar.opened + #page-container { left: 0 !important; }
+#page-container { left: 0 !important; right: 0 !important; margin: 0 auto !important; }
+.pc { display: block !important; }
+</style>`;
+
+      if (htmlContent.includes("</head>")) {
+        htmlContent = htmlContent.replace("</head>", `${noSidebarCss}\n</head>`);
+      }
+
+      await fs.promises.writeFile(finalHtmlPath, htmlContent, "utf8");
+    }
+
     console.log(`[pdf2htmlEX] Successfully generated pixel-perfect HTML at ${finalHtmlPath}`);
   } catch (err) {
     console.error(`[pdf2htmlEX Error]:`, err.message);
