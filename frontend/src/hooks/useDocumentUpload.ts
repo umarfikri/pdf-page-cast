@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import type { PdfWysiwygResult, UploadStatus } from "../types/document";
+import type { PdfConvertResult, UploadStatus } from "../types/document";
 import { uploadDocument, checkValidationStatus } from "../api/documentApi";
 
 export function useDocumentUpload() {
@@ -7,7 +7,7 @@ export function useDocumentUpload() {
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [jobId, setJobId] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
-    useState<PdfWysiwygResult | null>(null);
+    useState<PdfConvertResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const pollIntervalRef = useRef<number | null>(null);

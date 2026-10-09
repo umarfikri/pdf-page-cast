@@ -93,25 +93,36 @@ export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
     if (stdout) console.log(`[pdf2htmlEX stdout]:`, stdout);
     if (stderr) console.log(`[pdf2htmlEX stderr]:`, stderr);
 
+    let htmlContent = "";
     if (fs.existsSync(finalHtmlPath)) {
-      let htmlContent = await fs.promises.readFile(finalHtmlPath, "utf8");
+      htmlContent = await fs.promises.readFile(finalHtmlPath, "utf8");
 
-      // Hide sidebar navigation via CSS and ensure all page content (.pc) displays immediately
-      const noSidebarCss = `<style type="text/css">
+      // Hide sidebar navigation via CSS, fix page container background, and ensure all page content (.pc) displays immediately
+      const customCss = `<style type="text/css">
 #sidebar { display: none !important; width: 0 !important; }
 #sidebar.opened + #page-container { left: 0 !important; }
-#page-container { left: 0 !important; right: 0 !important; margin: 0 auto !important; }
+#page-container { left: 0 !important; right: 0 !important; margin: 0 auto !important; background: #f8fafc none !important; }
 .pc { display: block !important; }
 </style>`;
 
       if (htmlContent.includes("</head>")) {
-        htmlContent = htmlContent.replace("</head>", `${noSidebarCss}\n</head>`);
+        htmlContent = htmlContent.replace("</head>", `${customCss}\n</head>`);
       }
 
       await fs.promises.writeFile(finalHtmlPath, htmlContent, "utf8");
     }
 
     console.log(`[pdf2htmlEX] Successfully generated pixel-perfect HTML at ${finalHtmlPath}`);
+
+    return {
+      success: true,
+      data: htmlContent,
+      html: htmlContent,
+      htmlPath: finalHtmlPath,
+      viewUrl: "/something",
+      filename: originalname,
+      convertedAt: new Date().toISOString(),
+    };
   } catch (err) {
     console.error(`[pdf2htmlEX Error]:`, err.message);
     if (!fs.existsSync(finalHtmlPath)) {
@@ -121,12 +132,4 @@ export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
     // Clean up temporary input file
     fs.promises.unlink(inputPdfPath).catch(() => {});
   }
-
-  return {
-    success: true,
-    htmlPath: finalHtmlPath,
-    viewUrl: "/something",
-    filename: originalname,
-    convertedAt: new Date().toISOString(),
-  };
 }

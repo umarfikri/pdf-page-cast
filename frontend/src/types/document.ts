@@ -17,13 +17,14 @@ export interface PdfPageData {
   items: PdfTextItem[];
 }
 
-export interface PdfWysiwygResult {
-  isPdf: boolean;
-  totalPages: number;
-  fullText: string;
-  pages: PdfPageData[];
-  metadata: Record<string, any> | null;
-  scannedAt: string;
+export interface PdfConvertResult {
+  success: boolean;
+  data: string; // The complete pixel-perfect HTML string
+  html: string;
+  htmlPath?: string;
+  viewUrl?: string;
+  filename?: string;
+  convertedAt?: string;
 }
 
 export type UploadStatus =
@@ -42,6 +43,6 @@ export interface UploadResponse {
 export interface ValidationStatusResponse {
   jobId: string;
   status: "processing" | "completed" | "failed";
-  result?: PdfWysiwygResult;
+  result?: PdfConvertResult;
   error?: string;
 }
