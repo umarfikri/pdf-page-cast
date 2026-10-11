@@ -1,1 +1,141 @@
 @import "tailwindcss";
+
+/* TipTap Editor Styles */
+.tiptap {
+  outline: none !important;
+}
+
+.tiptap > * + * {
+  margin-top: 0.75em;
+}
+
+.tiptap p {
+  margin-bottom: 0.5rem;
+  line-height: 1.65;
+}
+
+.tiptap h1 {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: inherit;
+  margin-top: 1.25rem;
+  margin-bottom: 0.6rem;
+  line-height: 1.25;
+}
+
+.tiptap h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: inherit;
+  margin-top: 1.1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.tiptap h3 {
+  font-size: 1.18rem;
+  font-weight: 600;
+  color: inherit;
+  margin-top: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+  padding-left: 1.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  padding-left: 1.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap li {
+  margin-bottom: 0.25rem;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid #0284c7;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #475569;
+  font-style: italic;
+  background-color: #f8fafc;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.tiptap pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 0.85rem 1.1rem;
+  border-radius: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin: 0.85rem 0;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+
+.tiptap code {
+  background: #f1f5f9;
+  color: #0369a1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  border: 1px solid #e2e8f0;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 1.5rem 0;
+}
+
+.tiptap mark {
+  background-color: #fef08a;
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.2rem;
+}
+
+/* PDF pages. The sheet look and the gap between pages exist only in the
+   editor; the saved HTML is plain <div data-type="page"> wrappers. */
+.tiptap [data-type="page"] {
+  position: relative;
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 auto 24px;
+  padding: 56px 64px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.tiptap [data-type="page"]:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap [data-type="page"]::after {
+  content: "Page " attr(data-page);
+  position: absolute;
+  right: 20px;
+  bottom: 12px;
+  font: 11px sans-serif;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+/* Figures (images, charts, tables) cropped from the PDF */
+.tiptap img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+}
+
+.tiptap img.ProseMirror-selectednode {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}

@@ -1,21 +1,20 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execPromise = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export const UPLOAD_DIR = path.join(__dirname, "../uploads");
 export const BACKEND_DIR = path.join(__dirname, "..");
-export const SOMETHING_HTML_PATH = path.join(BACKEND_DIR, "something.html");
+// Per-job converted assets (figure PNGs), served at /api/files/<jobId>/<name>
+export const OUTPUT_DIR = path.join(BACKEND_DIR, "output");
 
-// Ensure upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+export const CONVERTER_URL = process.env.CONVERTER_URL || "http://localhost:8000";
+const CONVERT_TIMEOUT_MS = 5 * 60 * 1000;
+
+// Ensure output directory exists
+if (!fs.existsSync(OUTPUT_DIR)) {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
 
 // Check if the uploaded file is a valid PDF
@@ -37,99 +36,71 @@ export function isPdfFile(file) {
   return false;
 }
 
-export const DOCKER_IMAGE =
-  process.env.PDF2HTMLEX_DOCKER_IMAGE ||
-  "pdf2htmlex/pdf2htmlex:0.18.8.rc2-master-20200820-alpine-3.12.0-x86_64";
-
 /**
- * Check pdf2htmlEX Docker status
+ * Check that the Python converter service (Docling + pdfplumber) is reachable
  */
-export async function checkPdf2htmlStatus() {
+export async function checkConverterStatus() {
   try {
-    const { stdout: dockerVer } = await execPromise("docker -v");
-    return {
-      installed: true,
-      mode: "docker",
-      dockerVersion: dockerVer.trim(),
-      image: DOCKER_IMAGE,
-      message: `Docker is detected with image: ${DOCKER_IMAGE}`,
-    };
+    const response = await fetch(`${CONVERTER_URL}/health`, { signal: AbortSignal.timeout(5000) });
+    const body = await response.json();
+    return { available: response.ok, url: CONVERTER_URL, ...body };
   } catch (err) {
     return {
-      installed: false,
-      mode: "docker",
+      available: false,
+      url: CONVERTER_URL,
       error: err.message,
-      help: "Ensure Docker Desktop is running on your machine.",
+      help: "Start the converter with `docker compose up -d converter` from the project root.",
     };
   }
 }
 
 /**
- * Convert PDF buffer to pixel-perfect HTML using pdf2htmlEX in Docker and save to something.html
+ * Convert a PDF into Tiptap-ready HTML via the converter service
  * @param {Buffer} buffer - PDF file buffer
  * @param {string} originalname - Original filename
+ * @param {string} jobId - Job id, used as the folder for this job's figure images
  * @returns {Promise<Object>}
  */
-export async function convertPdfToHtml(buffer, originalname = "document.pdf") {
-  const tempFileName = `input_${Date.now()}.pdf`;
-  const inputPdfPath = path.join(UPLOAD_DIR, tempFileName);
-  const outputFilename = "something.html";
-  const finalHtmlPath = path.join(BACKEND_DIR, outputFilename);
+export async function convertPdfToHtml(buffer, originalname = "document.pdf", jobId) {
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: "application/pdf" }), originalname);
 
-  console.log(`[pdf2htmlEX] Writing temporary PDF: ${inputPdfPath}`);
-  await fs.promises.writeFile(inputPdfPath, buffer);
+  console.log(`[Converter] Sending ${originalname} to ${CONVERTER_URL}/convert`);
 
-  // Normalize path for docker volume mount on Windows
-  const hostMountPath = path.resolve(BACKEND_DIR);
+  const response = await fetch(`${CONVERTER_URL}/convert`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(CONVERT_TIMEOUT_MS),
+  });
 
-  // The Docker image entrypoint is already pdf2htmlEX, so pass options directly
-  // --process-outline 0 --embed-outline 0 disables the sidebar navigation/bookmarks pane
-  const dockerCmd = `docker run --rm -v "${hostMountPath}:/pdf" -w /pdf ${DOCKER_IMAGE} --embed-css 1 --embed-font 1 --embed-image 1 --embed-javascript 1 --process-outline 0 --embed-outline 0 --dest-dir /pdf "uploads/${tempFileName}" "${outputFilename}"`;
-
-  console.log(`[pdf2htmlEX] Running Docker command: ${dockerCmd}`);
-
-  try {
-    const { stdout, stderr } = await execPromise(dockerCmd);
-    if (stdout) console.log(`[pdf2htmlEX stdout]:`, stdout);
-    if (stderr) console.log(`[pdf2htmlEX stderr]:`, stderr);
-
-    let htmlContent = "";
-    if (fs.existsSync(finalHtmlPath)) {
-      htmlContent = await fs.promises.readFile(finalHtmlPath, "utf8");
-
-      // Hide sidebar navigation via CSS, fix page container background, and ensure all page content (.pc) displays immediately
-      const customCss = `<style type="text/css">
-#sidebar { display: none !important; width: 0 !important; }
-#sidebar.opened + #page-container { left: 0 !important; }
-#page-container { left: 0 !important; right: 0 !important; margin: 0 auto !important; background: #f8fafc none !important; }
-.pc { display: block !important; }
-</style>`;
-
-      if (htmlContent.includes("</head>")) {
-        htmlContent = htmlContent.replace("</head>", `${customCss}\n</head>`);
-      }
-
-      await fs.promises.writeFile(finalHtmlPath, htmlContent, "utf8");
-    }
-
-    console.log(`[pdf2htmlEX] Successfully generated pixel-perfect HTML at ${finalHtmlPath}`);
-
-    return {
-      success: true,
-      data: htmlContent,
-      html: htmlContent,
-      htmlPath: finalHtmlPath,
-      viewUrl: "/something",
-      filename: originalname,
-      convertedAt: new Date().toISOString(),
-    };
-  } catch (err) {
-    console.error(`[pdf2htmlEX Error]:`, err.message);
-    if (!fs.existsSync(finalHtmlPath)) {
-      throw new Error(`pdf2htmlEX Docker conversion failed: ${err.message}`);
-    }
-  } finally {
-    // Clean up temporary input file
-    fs.promises.unlink(inputPdfPath).catch(() => {});
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.detail || `Converter responded with HTTP ${response.status}`);
   }
+
+  const { html, assets = [], pages, pageSizes, baseStyle } = await response.json();
+
+  // Save figure images and point <img src> at the static route
+  const jobDir = path.join(OUTPUT_DIR, jobId);
+  await fs.promises.mkdir(jobDir, { recursive: true });
+
+  let tiptapHtml = html;
+  for (const asset of assets) {
+    const name = path.basename(asset.name);
+    await fs.promises.writeFile(path.join(jobDir, name), Buffer.from(asset.base64, "base64"));
+    tiptapHtml = tiptapHtml.replaceAll(`src="${asset.name}"`, `src="/api/files/${jobId}/${name}"`);
+  }
+
+  console.log(`[Converter] Converted ${originalname}: ${pages} page(s), ${assets.length} figure(s)`);
+
+  return {
+    success: true,
+    data: tiptapHtml,
+    html: tiptapHtml,
+    baseStyle,
+    pageSizes,
+    pages,
+    filename: originalname,
+    convertedAt: new Date().toISOString(),
+  };
 }

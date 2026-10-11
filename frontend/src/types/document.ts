@@ -1,28 +1,17 @@
-export interface PdfTextItem {
-  text: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  fontName: string | null;
-  hasEOL: boolean;
-}
-
-export interface PdfPageData {
-  pageNumber: number;
-  width: number;
-  height: number;
-  text: string;
-  itemsCount: number;
-  items: PdfTextItem[];
+// The PDF's most common body text style; spans in the HTML only carry styles that differ from it
+export interface BaseStyle {
+  fontFamily?: string | null;
+  fontSize?: string | null;
+  color?: string | null;
 }
 
 export interface PdfConvertResult {
   success: boolean;
-  data: string; // The complete pixel-perfect HTML string
-  html: string;
-  htmlPath?: string;
-  viewUrl?: string;
+  data: string; // The ready-to-use semantic HTML string for TipTap
+  html: string; // The ready-to-use semantic HTML string for TipTap
+  baseStyle?: BaseStyle;
+  pages?: number;
+  pageSizes?: { page: number; width: number; height: number }[];
   filename?: string;
   convertedAt?: string;
 }

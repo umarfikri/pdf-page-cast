@@ -1,0 +1,10 @@
+services:
+  converter:
+    build: ./converter
+    image: pdf-page-cast-converter
+    ports:
+      - "8000:8000"
+    environment:
+      # Set to true for scanned PDFs (slower)
+      DOCLING_OCR: "false"
+    restart: unless-stopped

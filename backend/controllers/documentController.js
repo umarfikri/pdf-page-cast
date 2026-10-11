@@ -1,15 +1,15 @@
 import {
   isPdfFile,
   convertPdfToHtml,
-  checkPdf2htmlStatus,
+  checkConverterStatus,
 } from "../services/documentService.js";
 
 // In-memory store for validation/conversion jobs
 const jobs = new Map();
 
-// GET /api/check-pdf2htmlex
-export const checkPdf2htmlExStatus = async (req, res) => {
-  const result = await checkPdf2htmlStatus();
+// GET /api/check-converter
+export const getConverterStatus = async (req, res) => {
+  const result = await checkConverterStatus();
   res.json(result);
 };
 
@@ -42,28 +42,28 @@ export const uploadDocument = async (req, res) => {
     error: null,
   });
 
-  // Asynchronous background conversion using pdf2htmlEX Docker into something.html
+  // Asynchronous background conversion via the Docling + pdfplumber converter service
   (async () => {
     const job = jobs.get(jobId);
     if (!job) return;
 
     try {
-      console.log(`[Upload] Starting pdf2htmlEX conversion for ${jobId}...`);
-      const result = await convertPdfToHtml(fileBuffer, originalname);
+      console.log(`[Upload] Starting conversion for ${jobId}...`);
+      const result = await convertPdfToHtml(fileBuffer, originalname, jobId);
       job.status = "completed";
       job.result = result;
-      console.log(`[Upload] Job ${jobId} completed! View output at http://localhost:5000/something`);
+      console.log(`[Upload] Job ${jobId} completed!`);
     } catch (err) {
       console.error(`[Upload] Job ${jobId} failed:`, err.message);
       job.status = "failed";
-      job.error = err.message || "Failed to convert PDF document with pdf2htmlEX";
+      job.error = err.message || "Failed to convert PDF document";
     }
   })();
 
   res.json({
     jobId,
     status: "processing",
-    message: "PDF received. Converting to HTML with pdf2htmlEX in progress.",
+    message: "PDF received. Converting to HTML in progress.",
   });
 };
 

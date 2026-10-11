@@ -1,4 +1,4 @@
-import React from "react";
+
 
 // Hook
 import { useDocumentUpload } from "./hooks/useDocumentUpload";
@@ -23,7 +23,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-blue-50/40 to-sky-100/50 text-slate-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl">
+      <div className={`w-full transition-all duration-300 ${status === "completed" ? "max-w-6xl py-6" : "max-w-4xl"}`}>
         {status === "idle" && (
           <DocumentDropzone
             file={file}
