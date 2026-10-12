@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/pdf-layout.css";
 
 /* TipTap Editor Styles */
 .tiptap {
@@ -101,16 +102,19 @@
   border-radius: 0.2rem;
 }
 
-/* PDF pages. The sheet look and the gap between pages exist only in the
-   editor; the saved HTML is plain <div data-type="page"> wrappers. */
+/* PDF pages. Page size and frame positions come from inline styles plus
+   styles/pdf-layout.css; the gap, shadow and page number below are editor-only. */
 .tiptap [data-type="page"] {
-  position: relative;
-  box-sizing: border-box;
-  max-width: 100%;
+  flex-shrink: 0;
   margin: 0 auto 24px;
-  padding: 56px 64px;
-  background: #fff;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+/* Show each positioned block's outline while editing */
+.tiptap[contenteditable="true"] [data-type="frame"]:hover,
+.tiptap[contenteditable="true"] [data-type="frame"]:focus-within {
+  outline: 1px dashed rgb(14 165 233 / 0.6);
+  outline-offset: 1px;
 }
 
 .tiptap [data-type="page"]:last-child {

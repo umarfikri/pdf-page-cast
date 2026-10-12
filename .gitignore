@@ -15,6 +15,6 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
-# Converter output and temporary uploads
-backend/output/
-backend/uploads/
+# Python caches and virtual environment
+__pycache__/
+.venv/

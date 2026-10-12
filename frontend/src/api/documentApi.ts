@@ -11,9 +11,10 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to upload document");
+    throw new Error(errorData.detail || errorData.error || "Failed to upload document");
   }
 
+  console.log(JSON.stringify(response.json))
   return response.json();
 }
 
@@ -26,8 +27,9 @@ export async function checkValidationStatus(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Failed to check validation status");
+    throw new Error(errorData.detail || errorData.error || "Failed to check validation status");
   }
+  console.log(JSON.stringify(response.json))
 
   return response.json();
 }
