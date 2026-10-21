@@ -22,7 +22,7 @@ export async function checkValidationStatus(
   jobId: string
 ): Promise<ValidationStatusResponse> {
   const response = await fetch(
-    `/api/validation-status/${encodeURIComponent(jobId)}`
+    `/api/validation-status/${encodeURIComponent(jobId)}?includeHtml=true`
   );
 
   if (!response.ok) {

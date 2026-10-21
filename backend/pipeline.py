@@ -573,6 +573,8 @@ def convert_pdf(path):
 
     return {
         "html": "\n".join(parts) or "<p>No readable content extracted from PDF.</p>",
+        # One HTML string per page, in page order, for the paginated result endpoint
+        "pageHtml": parts,
         "pages": len(page_sizes),
         "pageSizes": page_sizes,
         "baseStyle": {

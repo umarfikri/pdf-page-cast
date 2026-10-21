@@ -61,7 +61,8 @@ The frontend's Vite dev server forwards every `/api` request to `http://localhos
 | Method | Route | Description |
 | ------ | ----- | ----------- |
 | `POST` | `/api/upload` | Multipart form with a `file` field holding the PDF. Returns `{ jobId, status, message }` right away; the conversion runs in the background. |
-| `GET` | `/api/validation-status/{jobId}` | Returns the job. `status` is `processing`, `completed` or `failed`. When it is `completed`, `result` holds `html`, `baseStyle`, `pages`, `pageSizes`, `filename` and `convertedAt`. When it is `failed`, `error` says why. |
+| `GET` | `/api/validation-status/{jobId}` | Returns the job. `status` is `processing`, `completed` or `failed`. When it is `completed`, `result` holds `baseStyle`, `pages`, `pageSizes`, `filename` and `convertedAt`; the page HTML comes from `/api/result`. Add `?includeHtml=true` to also get the whole document's HTML in `result.html` (and `result.data`). When it is `failed`, `error` says why. |
+| `GET` | `/api/result/{jobId}?page=1&pageSize=3` | Returns a completed job's pages in chunks: `{ items, baseStyle, meta }`. Each item is `{ page, html, width, height }` for one PDF page. `meta` is `{ currentPage, pageSize, totalItems, totalPages, hasNextPage, hasPreviousPage }`, where `totalItems` is the PDF's page count. `pageSize` is 1–20 (default 3). Returns 409 while the job is still processing or failed. |
 | `GET` | `/api/health` | Returns `{ ok, opendataloaderVersion, pypdfium2Version }`. |
 | `GET` | `/api/hello` | Returns a greeting. |
 
